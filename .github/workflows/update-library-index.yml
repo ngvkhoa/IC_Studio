@@ -1,11 +1,11 @@
 name: Update library index
 
-# Runs when .ic files are added, changed or removed, and rebuilds libraries/index.json.
-# GitHub Pages cannot list a folder, so the web app reads this index to find the IC files.
+# Rebuilds libraries/index.json whenever a .ic file in libraries/ is added, changed or removed.
+# You can also run it by hand: Actions tab -> Update library index -> Run workflow.
 on:
   push:
     paths:
-      - "libraries/**.ic"
+      - "libraries/*.ic"
   workflow_dispatch:
 
 permissions:
@@ -25,7 +25,7 @@ jobs:
           with open('libraries/index.json', 'w', encoding='utf-8') as f:
               json.dump(names, f, indent=2)
               f.write('\n')
-          print(names)
+          print('Found', len(names), 'IC files:', names)
           PY
 
       - uses: stefanzweifel/git-auto-commit-action@v5
