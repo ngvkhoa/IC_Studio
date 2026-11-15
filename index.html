@@ -184,6 +184,7 @@
             </div>
 
             <button onclick="openIcRoadmapModal()" class="tbtn text-slate-400">IC list</button>
+            <button onclick="openWiringModal()" class="tbtn text-slate-400" title="Nano / Uno to ZIF socket wiring">Wiring</button>
             <button onclick="openHelpModal()" class="tbtn text-slate-400">Help</button>
         </div>
 
@@ -682,6 +683,37 @@
                         <span>Start flashing via USB</span>
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NANO / UNO WIRING -->
+    <div id="wiringModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-[180] items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">Wiring: Arduino Nano / Uno to ZIF-16 Socket</h3>
+                <button onclick="closeWiringModal()" class="w-7 h-7 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 items-start">
+                <div class="flex-1 w-full overflow-x-auto">
+                    <svg id="wiringSvg" viewBox="0 0 420 380" class="w-full h-auto" role="img" aria-label="Socket positions and Nano pins"></svg>
+                </div>
+                <div class="w-full md:w-56 text-xs text-slate-300 leading-relaxed space-y-2">
+                    <p><strong class="text-cyan-300">Socket:</strong> left column 1&ndash;8 (top to bottom), right column 16&ndash;9 (top to bottom).</p>
+                    <p><strong class="text-cyan-300">Nano / Uno:</strong> each socket position connects to the pin shown in its box.</p>
+                    <p><strong class="text-amber-300">Power:</strong> the firmware drives VCC positions HIGH and GND positions LOW through these pins. Do not connect 5V to the socket.</p>
+                    <p><strong class="text-emerald-300">Ground:</strong> connect one Nano GND pin to the socket position marked GND.</p>
+                    <p class="text-slate-500">Leave unused positions unconnected.</p>
+                </div>
+            </div>
+            <div>
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lookup table</div>
+                <div id="wiringTable" class="grid grid-cols-4 md:grid-cols-8 gap-1.5 text-[11px] font-mono"></div>
+            </div>
+            <div class="flex justify-end pt-2 border-t border-slate-800">
+                <button onclick="closeWiringModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">Close</button>
             </div>
         </div>
     </div>
@@ -1228,13 +1260,37 @@
         // - New IC files are added.
         // - IC files changed on the server are updated, unless you edited that IC locally.
         // - IC files you deleted locally are not brought back.
+        // Get the list of .ic files in ./libraries.
+        // On GitHub Pages: ask the GitHub API directly, so new files appear without editing index.json.
+        // Elsewhere (local server): read libraries/index.json.
+        async function getLibraryFileList() {
+            const gh = location.hostname.match(/^([^.]+)\.github\.io$/);
+            const repo = location.pathname.split('/').filter(Boolean)[0];
+            if (gh && repo) {
+                try {
+                    const r = await fetch(`https://api.github.com/repos/${gh[1]}/${repo}/contents/libraries`,
+                        { headers: { Accept: 'application/vnd.github+json' } });
+                    if (r.ok) {
+                        const items = await r.json();
+                        return items.filter(i => i.type === 'file' && /\.ic$/i.test(i.name)).map(i => i.name);
+                    }
+                } catch (_) { /* fall back to index.json */ }
+            }
+            try {
+                const r = await fetch('./libraries/index.json', { cache: 'no-store' });
+                if (r.ok) {
+                    const list = await r.json();
+                    if (Array.isArray(list)) return list;
+                }
+            } catch (_) { /* no list available */ }
+            return null;
+        }
+
         async function autoProbeLibrariesDirectory() {
             let added = 0, updated = 0;
             try {
-                const res = await fetch('./libraries/index.json', { cache: 'no-store' });
-                if (!res.ok) return;
-                const list = await res.json();
-                if (!Array.isArray(list)) return;
+                const list = await getLibraryFileList();
+                if (!list) return;
 
                 for (const fileName of list) {
                     const r = await fetch(`./libraries/${fileName}`, { cache: 'no-store' });
@@ -1642,6 +1698,71 @@
             renderIcLibraryDropdownList();
             loadIcPreset(code);
             showToast(`Created frame ${code} with block ${blockType}.`);
+        }
+
+        // ZIF socket position (1-16) -> Arduino Nano / Uno pin. Same mapping as the firmware (ZIF_PINS).
+        const ZIF_TO_NANO = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9',
+                             'D10', 'D11', 'D12', 'D13', 'A0', 'A1', 'A2', 'A3'];
+
+        function renderWiringDiagram() {
+            const svg = document.getElementById('wiringSvg');
+            const NS = 'http://www.w3.org/2000/svg';
+            svg.innerHTML = '';
+            const el = (tag, attrs, text) => {
+                const e = document.createElementNS(NS, tag);
+                Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+                if (text !== undefined) e.textContent = text;
+                svg.appendChild(e);
+                return e;
+            };
+
+            // Socket outline
+            el('rect', { x: 120, y: 20, width: 180, height: 340, rx: 14, fill: '#131519', stroke: '#3a414b', 'stroke-width': 2 });
+            el('text', { x: 210, y: 14, 'text-anchor': 'middle', fill: '#8b93a0', 'font-size': 12 }, 'ZIF-16 SOCKET (top view)');
+
+            const rowY = (k) => 44 + k * 40;
+            const boxW = 96, boxH = 28;
+            // Left column: positions 1..8 top to bottom
+            for (let k = 0; k < 8; k++) {
+                const zif = k + 1;
+                el('rect', { x: 20, y: rowY(k), width: boxW, height: boxH, rx: 6, fill: '#1e2227', stroke: '#2b3038' });
+                el('text', { x: 20 + boxW / 2, y: rowY(k) + 19, 'text-anchor': 'middle', fill: '#d6dae0', 'font-size': 12, 'font-family': 'JetBrains Mono, monospace' }, `${zif} \u2192 ${ZIF_TO_NANO[zif - 1]}`);
+                el('line', { x1: 20 + boxW, y1: rowY(k) + boxH / 2, x2: 120, y2: rowY(k) + boxH / 2, stroke: '#4a525e', 'stroke-width': 1.5 });
+            }
+            // Right column: positions 16..9 top to bottom
+            for (let k = 0; k < 8; k++) {
+                const zif = 16 - k;
+                el('rect', { x: 304, y: rowY(k), width: boxW, height: boxH, rx: 6, fill: '#1e2227', stroke: '#2b3038' });
+                el('text', { x: 304 + boxW / 2, y: rowY(k) + 19, 'text-anchor': 'middle', fill: '#d6dae0', 'font-size': 12, 'font-family': 'JetBrains Mono, monospace' }, `${zif} \u2192 ${ZIF_TO_NANO[zif - 1]}`);
+                el('line', { x1: 304, y1: rowY(k) + boxH / 2, x2: 300, y2: rowY(k) + boxH / 2, stroke: '#4a525e', 'stroke-width': 1.5 });
+            }
+            el('text', { x: 20, y: 372, fill: '#8b93a0', 'font-size': 11 }, 'Left column: 1\u20138 (top \u2192 bottom)');
+            el('text', { x: 400, y: 372, 'text-anchor': 'end', fill: '#8b93a0', 'font-size': 11 }, 'Right column: 16\u20139');
+        }
+
+        function renderWiringTable() {
+            const box = document.getElementById('wiringTable');
+            box.innerHTML = '';
+            ZIF_TO_NANO.forEach((nano, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'rounded bg-slate-950 border border-slate-800 px-2 py-1 text-slate-300';
+                cell.textContent = `ZIF ${i + 1} \u2192 ${nano}`;
+                box.appendChild(cell);
+            });
+        }
+
+        function openWiringModal() {
+            renderWiringDiagram();
+            renderWiringTable();
+            const m = document.getElementById('wiringModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeWiringModal() {
+            const m = document.getElementById('wiringModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
         }
 
         function openHelpModal() {
