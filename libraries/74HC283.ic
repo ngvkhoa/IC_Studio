@@ -1,0 +1,23 @@
+NAME: 74HC283 (4-Bit Adder)
+DESC: 4-bit full adder with fast carry (DIP-16)
+CATEGORY: Arithmetic
+DIP: 16
+VCC: 16
+GND: 8
+
+BLOCK: U1 NBIT_ADDER 890 230
+
+WIRE: PIN.5 -> U1.A0
+WIRE: PIN.3 -> U1.A1
+WIRE: PIN.14 -> U1.A2
+WIRE: PIN.12 -> U1.A3
+WIRE: PIN.6 -> U1.B0
+WIRE: PIN.2 -> U1.B1
+WIRE: PIN.15 -> U1.B2
+WIRE: PIN.11 -> U1.B3
+WIRE: PIN.7 -> U1.Cin
+WIRE: U1.S0 -> PIN.4
+WIRE: U1.S1 -> PIN.1
+WIRE: U1.S2 -> PIN.13
+WIRE: U1.S3 -> PIN.10
+WIRE: U1.Cout -> PIN.9

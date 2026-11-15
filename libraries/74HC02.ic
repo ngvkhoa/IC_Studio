@@ -1,0 +1,25 @@
+# IC library file format (.ic) — stored in the ./libraries/ folder
+NAME: 74HC02
+DESC: Quad 2-Input NOR Gate
+CATEGORY: Standard
+DIP: 14
+VCC: 14
+GND: 7
+
+BLOCK: U1 NOR 740 310
+BLOCK: U2 NOR 720 510
+BLOCK: U3 NOR 1110 560 FLIP
+BLOCK: U4 NOR 1120 370 FLIP
+
+WIRE: PIN.2 -> U1.A
+WIRE: PIN.3 -> U1.B
+WIRE: U1.Y -> PIN.1
+WIRE: PIN.5 -> U2.A
+WIRE: PIN.6 -> U2.B
+WIRE: U2.Y -> PIN.4
+WIRE: PIN.12 -> U4.A
+WIRE: PIN.11 -> U4.B
+WIRE: U4.Y -> PIN.13
+WIRE: PIN.9 -> U3.A
+WIRE: PIN.8 -> U3.B
+WIRE: U3.Y -> PIN.10

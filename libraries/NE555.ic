@@ -1,0 +1,14 @@
+NAME: NE555 (Timer IC)
+DESC: Astable / monostable timer IC (DIP-8)
+CATEGORY: Other
+DIP: 8
+VCC: 8
+GND: 1
+
+BLOCK: U1 ASTABLE 890 240
+
+WIRE: PIN.2 -> U1.TRIG
+WIRE: PIN.6 -> U1.THRES
+WIRE: PIN.4 -> U1.RST
+WIRE: U1.OUT -> PIN.3
+WIRE: U1.DIS -> PIN.7
